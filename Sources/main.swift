@@ -537,6 +537,7 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
         UNUserNotificationCenter.current().delegate = self
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
         _ = Updater.shared        // démarre les vérifications planifiées de Sparkle
+        buildMainMenu()           // ⌘W, ⌘Q, et raccourcis d'édition dans les fenêtres
         settings.onLoginChange = { on in Self.setLoginItem(on) }
         settings.onDockChange = { [weak self] on in
             NSApp.setActivationPolicy(on ? .regular : .accessory)
@@ -843,6 +844,42 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
     @objc func menuOptions() { openSettings() }
     @objc func menuUpdate() { Updater.shared.checkForUpdates() }
     @objc func menuAbout() { openAbout() }
+
+    // Menu principal : permet ⌘W (fermer fenêtre), ⌘Q, et l'édition de texte standard
+    // dans les fenêtres (Options / À propos), même pour une app agent.
+    func buildMainMenu() {
+        let mainMenu = NSMenu()
+
+        let appItem = NSMenuItem(); mainMenu.addItem(appItem)
+        let appMenu = NSMenu()
+        let about = appMenu.addItem(withTitle: "À propos de DroppTimer", action: #selector(menuAbout), keyEquivalent: "")
+        about.target = self
+        appMenu.addItem(.separator())
+        appMenu.addItem(withTitle: "Préférences…", action: #selector(menuOptions), keyEquivalent: ",").target = self
+        appMenu.addItem(.separator())
+        appMenu.addItem(withTitle: "Quitter DroppTimer", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appItem.submenu = appMenu
+
+        let editItem = NSMenuItem(); mainMenu.addItem(editItem)
+        let editMenu = NSMenu(title: "Édition")
+        editMenu.addItem(withTitle: "Annuler", action: Selector(("undo:")), keyEquivalent: "z")
+        editMenu.addItem(withTitle: "Rétablir", action: Selector(("redo:")), keyEquivalent: "Z")
+        editMenu.addItem(.separator())
+        editMenu.addItem(withTitle: "Couper", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        editMenu.addItem(withTitle: "Copier", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        editMenu.addItem(withTitle: "Coller", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        editMenu.addItem(withTitle: "Tout sélectionner", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editItem.submenu = editMenu
+
+        let winItem = NSMenuItem(); mainMenu.addItem(winItem)
+        let winMenu = NSMenu(title: "Fenêtre")
+        winMenu.addItem(withTitle: "Fermer", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        winMenu.addItem(withTitle: "Réduire", action: #selector(NSWindow.miniaturize(_:)), keyEquivalent: "m")
+        winItem.submenu = winMenu
+        NSApp.windowsMenu = winMenu
+
+        NSApp.mainMenu = mainMenu
+    }
 
     func openAbout() {
         if aboutWindow == nil {

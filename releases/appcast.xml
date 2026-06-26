@@ -1,0 +1,14 @@
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>DroppTimer</title>
+        <item>
+            <title>1.0.0</title>
+            <pubDate>Sat, 27 Jun 2026 01:02:28 +0200</pubDate>
+            <sparkle:version>1.0.0</sparkle:version>
+            <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/sandrophoto/dropptimer/releases/download/v1.0.0/DroppTimer-1.0.0.zip" length="1524049" type="application/octet-stream" sparkle:edSignature="LZuCqxK9ths2Dg6FO73e89/OufnlS61i5C0Ofsl4KMM01+Cdik0w/41eeJA6mpnOyt5RHuo3FKR6OSTkkG/AAg=="/>
+        </item>
+    </channel>
+</rss>

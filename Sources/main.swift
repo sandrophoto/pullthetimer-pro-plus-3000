@@ -249,6 +249,9 @@ final class Settings: ObservableObject {
     @Published var alarmOn: Bool { didSet { d.set(alarmOn, forKey: "alarmOn") } }
     @Published var soundName: String { didSet { d.set(soundName, forKey: "soundName") } }
     @Published var timeFormat: Int { didSet { d.set(timeFormat, forKey: "timeFormat") } }  // 0 = m:ss, 1 = h:mm:ss
+    @Published var repeatEnabled: Bool { didSet { d.set(repeatEnabled, forKey: "repeatEnabled") } }
+    @Published var repeatInfinite: Bool { didSet { d.set(repeatInfinite, forKey: "repeatInfinite") } }
+    @Published var repeatCount: Int { didSet { d.set(repeatCount, forKey: "repeatCount") } }   // nombre total de cycles
 
     @Published var actNotify: Bool { didSet { d.set(actNotify, forKey: "actNotify") } }
     @Published var notifyText: String { didSet { d.set(notifyText, forKey: "notifyText") } }
@@ -259,9 +262,6 @@ final class Settings: ObservableObject {
     @Published var quitAppBundleId: String { didSet { d.set(quitAppBundleId, forKey: "quitAppBundleId") } }
     @Published var actOpenURL: Bool { didSet { d.set(actOpenURL, forKey: "actOpenURL") } }
     @Published var urlString: String { didSet { d.set(urlString, forKey: "urlString") } }
-    @Published var actMusic: Bool { didSet { d.set(actMusic, forKey: "actMusic") } }
-    @Published var musicProvider: Int { didSet { d.set(musicProvider, forKey: "musicProvider") } }  // 0 Music, 1 Spotify
-    @Published var musicQuery: String { didSet { d.set(musicQuery, forKey: "musicQuery") } }
     @Published var actSleep: Bool { didSet { d.set(actSleep, forKey: "actSleep") } }
     @Published var actShutdown: Bool { didSet { d.set(actShutdown, forKey: "actShutdown") } }
 
@@ -272,6 +272,9 @@ final class Settings: ObservableObject {
         alarmOn       = d.object(forKey: "alarmOn") == nil ? true : d.bool(forKey: "alarmOn")
         let savedSound = d.string(forKey: "soundName") ?? "Glass"
         soundName     = systemSounds.contains(savedSound) ? savedSound : "Glass"
+        repeatEnabled = d.bool(forKey: "repeatEnabled")
+        repeatInfinite = d.bool(forKey: "repeatInfinite")
+        repeatCount   = max(2, d.integer(forKey: "repeatCount"))
         actNotify     = d.object(forKey: "actNotify") == nil ? true : d.bool(forKey: "actNotify")
         notifyText    = d.string(forKey: "notifyText") ?? "Minuteur terminé"
         timeFormat    = d.integer(forKey: "timeFormat")
@@ -282,15 +285,31 @@ final class Settings: ObservableObject {
         quitAppBundleId = d.string(forKey: "quitAppBundleId") ?? ""
         actOpenURL    = d.bool(forKey: "actOpenURL")
         urlString     = d.string(forKey: "urlString") ?? "https://"
-        actMusic      = d.bool(forKey: "actMusic")
-        musicProvider = d.integer(forKey: "musicProvider")
-        musicQuery    = d.string(forKey: "musicQuery") ?? ""
         actSleep      = d.bool(forKey: "actSleep")
         actShutdown   = d.bool(forKey: "actShutdown")
     }
 }
 
 let appDisplayName = "PullTheTimer Pro Plus 3000"
+
+// MARK: - AppleScript exécuté DEPUIS l'app (TCC attribué à l'app, pas à osascript)
+// Renvoie (sortie, messageDErreur). Le 1er envoi vers une app déclenche le prompt
+// d'autorisation d'automatisation ; un refus renvoie une erreur (-1743).
+func appleScript(_ source: String) -> (out: String?, error: String?) {
+    var err: NSDictionary?
+    let result = NSAppleScript(source: source)?.executeAndReturnError(&err)
+    if let err = err {
+        let msg = (err[NSAppleScript.errorMessage] as? String) ?? "\(err)"
+        NSLog("AppleScript error: \(err)")
+        return (nil, msg)
+    }
+    return (result?.stringValue ?? "", nil)
+}
+@discardableResult
+func runAppleScript(_ source: String) -> String? { appleScript(source).out }
+func asEscape(_ s: String) -> String {
+    s.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+}
 
 let systemSounds = ["Glass", "Ping", "Hero", "Submarine", "Funk",
                     "Bottle", "Frog", "Morse", "Purr", "Sosumi", "Tink"]
@@ -334,6 +353,16 @@ struct SettingsView: View {
                     Text("Heures, minutes, secondes (01h23m45s)").tag(1)
                 }
             }
+            Section("Répétition") {
+                Toggle("Répéter le minuteur", isOn: $settings.repeatEnabled)
+                if settings.repeatEnabled {
+                    Toggle("Répéter à l'infini", isOn: $settings.repeatInfinite)
+                    if !settings.repeatInfinite {
+                        Stepper("Nombre de répétitions : \(settings.repeatCount)",
+                                value: $settings.repeatCount, in: 2...99)
+                    }
+                }
+            }
         }
         .formStyle(.grouped)
     }
@@ -365,16 +394,6 @@ struct SettingsView: View {
                         Spacer()
                         Button("Choisir…", action: chooseApp)
                     }
-                }
-
-                Toggle("Jouer de la musique", isOn: $settings.actMusic)
-                if settings.actMusic {
-                    Picker("Service", selection: $settings.musicProvider) {
-                        Text("Apple Music").tag(0); Text("Spotify").tag(1)
-                    }.pickerStyle(.segmented)
-                    TextField(settings.musicProvider == 1
-                              ? "URI Spotify ou laisser vide (reprendre)"
-                              : "Titre / playlist (vide = lecture)", text: $settings.musicQuery)
                 }
 
                 Toggle("Ouvrir une page web", isOn: $settings.actOpenURL)
@@ -518,6 +537,67 @@ struct AboutView: View {
     private func open(_ s: String) { if let u = URL(string: s) { NSWorkspace.shared.open(u) } }
 }
 
+// MARK: - Popover de survol : la bille éclot en fenêtre montrant le minuteur
+final class TimerModel: ObservableObject {
+    @Published var progress: CGFloat = 0     // restant / total
+    @Published var timeText: String = ""
+    @Published var totalText: String = ""
+    @Published var paused = false
+    @Published var appeared = false          // pilote l'éclosion depuis la bille
+}
+
+struct TimerPopoverView: View {
+    @ObservedObject var model: TimerModel
+    var onPause: () -> Void
+    var onStop: () -> Void
+    var body: some View {
+        VStack(spacing: 14) {
+            ZStack {
+                Circle().stroke(Color.primary.opacity(0.12), lineWidth: 11)
+                Circle()
+                    .trim(from: 0, to: max(0.0001, 1 - model.progress))   // se remplit avec le temps écoulé
+                    .stroke(Color.accentColor, style: StrokeStyle(lineWidth: 11, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .animation(.linear(duration: 1), value: model.progress)
+                VStack(spacing: 2) {
+                    Text(model.timeText)
+                        .font(.system(size: 30, weight: .light, design: .rounded)).monospacedDigit()
+                        .foregroundStyle(.primary)
+                        .contentTransition(.numericText())
+                        .animation(.default, value: model.timeText)
+                    Text(model.paused ? "en pause" : "restant").font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+            .frame(width: 150, height: 150)
+            Text(model.totalText).font(.callout).foregroundStyle(.secondary)
+
+            HStack(spacing: 10) {
+                Button(action: onPause) {
+                    Label(model.paused ? "Reprendre" : "Pause",
+                          systemImage: model.paused ? "play.fill" : "pause.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                Button(action: onStop) {
+                    Label("Stop", systemImage: "stop.fill").frame(maxWidth: .infinity)
+                }
+                .tint(.red)
+            }
+            .controlSize(.large)
+            .buttonStyle(.bordered)
+        }
+        .padding(22)
+        .frame(width: 230, height: 300)
+        .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(.regularMaterial))
+        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(.white.opacity(0.08)))
+        // Éclosion : toute la carte « pousse » depuis la bille (haut), avec un léger ressort.
+        .scaleEffect(model.appeared ? 1 : 0.2, anchor: .top)
+        .opacity(model.appeared ? 1 : 0)
+        .animation(.spring(response: 0.34, dampingFraction: 0.7), value: model.appeared)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .padding(10)   // marge pour l'ombre et l'éclosion
+    }
+}
+
 // MARK: - Contrôleur principal
 final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCenterDelegate {
     let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -529,8 +609,19 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
     let dockImageView = NSImageView()
 
     var countdown: Timer?
+    var billeAnim: Timer?
     var totalSeconds = 0
     var remainingSeconds = 0
+    var timerMinutes = 0          // durée d'un cycle, pour relancer en répétition
+    var cyclesLeft = 0            // cycles restants
+    var totalCycles = 1
+    var cycleNum = 0              // numéro du cycle en cours (affichage)
+    var infiniteRepeat = false
+
+    let timerModel = TimerModel()
+    var hoverWindow: NSWindow?
+    var hideHoverWork: DispatchWorkItem?
+    var dismissWork: DispatchWorkItem?
 
     let maxMinutes = 180
     let dragThreshold: CGFloat = 8
@@ -554,10 +645,14 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
         dockImageView.imageScaling = .scaleProportionallyUpOrDown
 
         if let b = statusItem.button {
-            b.imagePosition = .imageLeft
+            b.imagePosition = .imageRight   // temps À GAUCHE de la bille → la bille reste fixe
             b.target = self
             b.action = #selector(handlePress)
             b.sendAction(on: [.leftMouseDown, .rightMouseDown])
+            // Zone de survol → popover du minuteur
+            b.addTrackingArea(NSTrackingArea(rect: b.bounds,
+                options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                owner: self, userInfo: nil))
         }
         setIcon(fill: 1)
 
@@ -575,7 +670,15 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
     // MARK: Interaction (clic-maintenu puis tirer vers le bas)
     @objc func handlePress() {
         guard let event = NSApp.currentEvent else { return }
+        closeHoverPopover()
         if event.type == .rightMouseDown { showMenu(); return }
+
+        // Double-clic → annule le menu différé et le minuteur en cours.
+        if event.clickCount >= 2 {
+            NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(showMenuDeferred), object: nil)
+            if remainingSeconds > 0 { cancelTimer() }
+            return
+        }
 
         let startY = NSEvent.mouseLocation.y
         let apex = apexPoint()
@@ -610,16 +713,22 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
             case .leftMouseUp:
                 if didDrag && dist > cancelThreshold {
                     let mins = minutesFor(distance: dist)
-                    overlayView.onDetached = { [weak self] in
-                        self?.overlayWindow.orderOut(nil); self?.startTimer(minutes: mins)
-                    }
+                    let startFill = 1 - min(dist / maxDist, 1)   // niveau au moment du lâcher
+                    overlayView.onDetached = { [weak self] in self?.overlayWindow.orderOut(nil) }
                     overlayView.release()
+                    // La bille finit de se vider, puis le minuteur démarre.
+                    drainBille(from: startFill) { [weak self] in self?.startTimer(minutes: mins) }
                 } else if didDrag {
                     // Ligne remontée sur l'icône → on annule le geste ET le minuteur en cours
                     overlayView.cancel()
                     overlayWindow.orderOut(nil)
                     if remainingSeconds > 0 { cancelTimer() } else { setIcon(fill: 1) }
-                } else { showMenu() }
+                } else if remainingSeconds > 0 {
+                    // Minuteur en cours : on diffère le menu pour laisser une chance au double-clic (annulation).
+                    perform(#selector(showMenuDeferred), with: nil, afterDelay: NSEvent.doubleClickInterval, inModes: [.common])
+                } else {
+                    showMenu()
+                }
                 break trackingLoop
             default: break
             }
@@ -649,6 +758,7 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
     }
 
     func beginOverlay(apex: CGPoint, target: CGPoint) {
+        billeAnim?.invalidate(); billeAnim = nil       // un nouveau geste interrompt le vidage
         let screen = NSScreen.screens.first { $0.frame.contains(apex) } ?? NSScreen.main!
         overlayWindow.setFrame(screen.frame, display: false)
         let bounds = NSRect(origin: .zero, size: screen.frame.size)
@@ -665,26 +775,70 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
 
     // MARK: Minuteur
     func startTimer(minutes: Int) {
-        totalSeconds = minutes * 60
+        timerMinutes = minutes
+        infiniteRepeat = settings.repeatEnabled && settings.repeatInfinite
+        totalCycles = (settings.repeatEnabled && !settings.repeatInfinite) ? max(1, settings.repeatCount) : 1
+        cyclesLeft = totalCycles
+        cycleNum = 0
+        beginCycle()
+    }
+    private func beginCycle() {
+        cycleNum += 1
+        totalSeconds = timerMinutes * 60
         remainingSeconds = totalSeconds
+        timerModel.paused = false
+        let base = timerMinutes >= 60 ? "Minuteur de \(timerMinutes/60)h\(String(format: "%02d", timerMinutes%60))"
+                                      : "Minuteur de \(timerMinutes) min"
+        if infiniteRepeat        { timerModel.totalText = "\(base) · ∞ (\(cycleNum))" }
+        else if totalCycles > 1  { timerModel.totalText = "\(base) · \(cycleNum)/\(totalCycles)" }
+        else                     { timerModel.totalText = base }
+        startCountdown()
+        updateDisplay()
+    }
+    private func startCountdown() {
         countdown?.invalidate()
         countdown = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in self?.tick() }
         RunLoop.main.add(countdown!, forMode: .common)
+    }
+    func togglePause() { timerModel.paused ? resumeTimer() : pauseTimer() }
+    func pauseTimer() {
+        guard remainingSeconds > 0 else { return }
+        countdown?.invalidate(); countdown = nil
+        timerModel.paused = true
+    }
+    func resumeTimer() {
+        guard remainingSeconds > 0 else { return }
+        timerModel.paused = false
+        startCountdown()
         updateDisplay()
     }
     func tick() { remainingSeconds -= 1; if remainingSeconds <= 0 { finishTimer() } else { updateDisplay() } }
     func cancelTimer() {
         countdown?.invalidate(); countdown = nil
+        billeAnim?.invalidate(); billeAnim = nil
         totalSeconds = 0; remainingSeconds = 0
+        cyclesLeft = 0; infiniteRepeat = false
+        timerModel.paused = false
         setIcon(fill: 1)
         statusItem.button?.attributedTitle = NSAttributedString(string: "")
+        closeHoverPopover()
     }
     func finishTimer() {
         countdown?.invalidate(); countdown = nil
-        playAlarm()
+        playAlarm()                              // l'alarme sonne à chaque cycle
+        if infiniteRepeat { beginCycle(); return }   // boucle sans fin (Stop pour arrêter)
+        cyclesLeft -= 1
+        if cyclesLeft > 0 {                      // répétition : on relance le même minuteur
+            beginCycle()
+            return
+        }
+        // Dernier cycle : déclencheurs complets puis reset
+        totalSeconds = 0; remainingSeconds = 0
+        timerModel.paused = false
         runTriggers()
         setIcon(fill: 1)
         statusItem.button?.attributedTitle = NSAttributedString(string: "")
+        closeHoverPopover()
     }
     func postNotification() {
         let content = UNMutableNotificationContent()
@@ -718,12 +872,35 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
     func refreshIconNow() {
         if totalSeconds > 0 { updateDisplay() } else { setIcon(fill: 1) }
     }
+
+    // Petite animation : la bille finit de se vider (de `start` à 0), puis `completion`.
+    func drainBille(from start: CGFloat, completion: @escaping () -> Void) {
+        billeAnim?.invalidate()
+        var f = max(0, min(1, start))
+        var phase: CGFloat = 0
+        billeAnim = Timer(timeInterval: 1.0/60.0, repeats: true) { [weak self] t in
+            guard let self = self else { t.invalidate(); return }
+            f -= (1.0/60.0) / 0.4                 // vidage en ~0,4 s
+            phase += 0.6
+            if f <= 0 {
+                t.invalidate(); self.billeAnim = nil
+                self.setIcon(fill: 0, dockCustom: true)
+                completion()
+            } else {
+                self.setIcon(fill: f, phase: phase, dockCustom: true)
+            }
+        }
+        RunLoop.main.add(billeAnim!, forMode: .common)
+    }
     func updateDisplay() {
         // Le disque se REMPLIT à mesure que le temps s'écoule (plein à la fin).
         let frac = totalSeconds > 0 ? CGFloat(totalSeconds - remainingSeconds)/CGFloat(totalSeconds) : 0
         setIcon(fill: frac, phase: CGFloat(remainingSeconds) * 0.9, dockCustom: true)
-        statusItem.button?.attributedTitle = NSAttributedString(string: " " + formatTime(remainingSeconds), attributes: [
+        statusItem.button?.attributedTitle = NSAttributedString(string: formatTime(remainingSeconds) + " ", attributes: [
             .font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium)])
+        // Popover de survol
+        timerModel.progress = totalSeconds > 0 ? CGFloat(remainingSeconds)/CGFloat(totalSeconds) : 0
+        timerModel.timeText = formatTime(remainingSeconds)
     }
 
     // MARK: Alarme + déclencheurs
@@ -731,7 +908,7 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
         if settings.alarmOn, let s = NSSound(named: settings.soundName) { s.play() }
         NSApp.requestUserAttention(.criticalRequest)
     }
-    // Lance les déclencheurs non destructifs (apps, URL, musique, fermeture)
+    // Lance les déclencheurs non destructifs (apps, URL, fermeture)
     func runNonTerminalTriggers() {
         let s = settings
         if s.actNotify { postNotification() }
@@ -741,14 +918,13 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
         if s.actOpenURL, let u = URL(string: s.urlString), u.scheme != nil {
             NSWorkspace.shared.open(u)
         }
-        if s.actMusic { playMusic() }
         if s.actQuitApp { quitChosenApp() }
     }
     func runTriggers() {
         runNonTerminalTriggers()
         // Les actions terminales en dernier
-        if settings.actSleep { osa("tell application \"System Events\" to sleep") }
-        if settings.actShutdown { osa("tell application \"System Events\" to shut down") }
+        if settings.actSleep { runAppleScript("tell application \"System Events\" to sleep") }
+        if settings.actShutdown { runAppleScript("tell application \"System Events\" to shut down") }
     }
     func testTriggers() { runNonTerminalTriggers() }
 
@@ -758,36 +934,7 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
             let apps = NSRunningApplication.runningApplications(withBundleIdentifier: s.quitAppBundleId)
             if !apps.isEmpty { apps.forEach { $0.terminate() }; return }
         }
-        if !s.quitAppName.isEmpty { osa("tell application \"\(s.quitAppName)\" to quit") }
-    }
-    func playMusic() {
-        let q = settings.musicQuery.trimmingCharacters(in: .whitespaces)
-        if settings.musicProvider == 1 {                 // Spotify
-            if q.hasPrefix("spotify:") { osa("tell application \"Spotify\" to play track \"\(q)\"") }
-            else { osa("tell application \"Spotify\" to play") }
-        } else {                                          // Apple Music
-            if q.isEmpty { osa("tell application \"Music\"\nactivate\nplay\nend tell") }
-            else {
-                osa("""
-                tell application "Music"
-                  activate
-                  try
-                    play (first track of library playlist 1 whose name contains "\(q)")
-                  on error
-                    try
-                      play playlist "\(q)"
-                    end try
-                  end try
-                end tell
-                """)
-            }
-        }
-    }
-    func osa(_ script: String) {
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        p.arguments = ["-e", script]
-        try? p.run()
+        if !s.quitAppName.isEmpty { runAppleScript("tell application \"\(asEscape(s.quitAppName))\" to quit") }
     }
 
     static func setLoginItem(_ on: Bool) {
@@ -845,6 +992,76 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
         statusItem.button?.performClick(nil)
         statusItem.menu = nil
     }
+    // MARK: Fenêtre de survol (bille + fenêtre ont chacune une zone de survol)
+    // Sélecteurs Obj-C explicites : NSTrackingArea envoie mouseEntered:/mouseExited:
+    // (AppController n'étant pas NSResponder, sans ça Swift génèrerait mouseEnteredWith:).
+    @objc(mouseEntered:) func mouseEntered(with event: NSEvent) { presentHover() }
+    @objc(mouseExited:) func mouseExited(with event: NSEvent) {
+        cancelDismiss()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self = self, !self.mouseOverHoverZone() else { return }
+            self.dismissHover()
+        }
+        hideHoverWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12, execute: work)
+    }
+    func mouseOverHoverZone() -> Bool {
+        let p = NSEvent.mouseLocation
+        if let b = statusItem.button, let w = b.window {
+            let f = w.convertToScreen(b.convert(b.bounds, to: nil))
+            if f.insetBy(dx: -2, dy: -4).contains(p) { return true }
+        }
+        if let win = hoverWindow, win.isVisible, win.frame.contains(p) { return true }
+        return false
+    }
+    func cancelDismiss() { hideHoverWork?.cancel(); dismissWork?.cancel() }
+
+    func presentHover() {
+        cancelDismiss()
+        guard remainingSeconds > 0, let b = statusItem.button, let bw = b.window else { return }
+        if hoverWindow == nil {
+            let win = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 250, height: 320),
+                              styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+            win.isOpaque = false
+            win.backgroundColor = .clear
+            win.hasShadow = true
+            win.level = .statusBar
+            win.becomesKeyOnlyIfNeeded = true       // permet de cliquer les boutons
+            win.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+            let host = NSHostingView(rootView: TimerPopoverView(model: timerModel,
+                onPause: { [weak self] in self?.togglePause() },
+                onStop:  { [weak self] in self?.cancelTimer() }))
+            win.contentView = host
+            // Zone de survol sur la fenêtre : y entrer la garde, en sortir la ferme.
+            host.addTrackingArea(NSTrackingArea(rect: host.bounds,
+                options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self, userInfo: nil))
+            hoverWindow = win
+        }
+        let f = bw.convertToScreen(b.convert(b.bounds, to: nil))
+        let size = hoverWindow!.frame.size
+        hoverWindow!.setFrameOrigin(NSPoint(x: f.midX - size.width/2, y: f.minY - size.height + 6))
+        if !hoverWindow!.isVisible {
+            timerModel.appeared = false
+            hoverWindow!.orderFrontRegardless()
+            DispatchQueue.main.async { [weak self] in self?.timerModel.appeared = true }   // éclosion
+        } else {
+            timerModel.appeared = true   // ré-entrée pendant la fermeture → re-grandit
+        }
+    }
+    // Ferme avec animation : la carte se rétracte vers la bille, puis on retire la fenêtre.
+    func dismissHover() {
+        timerModel.appeared = false
+        let work = DispatchWorkItem { [weak self] in self?.hoverWindow?.orderOut(nil) }
+        dismissWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.36, execute: work)
+    }
+    func closeHoverPopover() {
+        cancelDismiss()
+        timerModel.appeared = false
+        hoverWindow?.orderOut(nil)
+    }
+
+    @objc func showMenuDeferred() { showMenu() }
     @objc func menuCancel() { cancelTimer() }
     @objc func menuOptions() { openSettings() }
     @objc func menuUpdate() { Updater.shared.checkForUpdates() }

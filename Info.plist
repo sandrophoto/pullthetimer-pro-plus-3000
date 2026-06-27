@@ -2,37 +2,37 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleName</key>
-    <string>DroppTimer</string>
-    <key>CFBundleDisplayName</key>
-    <string>DroppTimer</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.tigre.dropptimer</string>
-    <key>CFBundleExecutable</key>
-    <string>DroppTimer</string>
-    <key>CFBundleVersion</key>
-    <string>1.0.0</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.0.0</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleIconFile</key>
-    <string>AppIcon</string>
-    <key>LSMinimumSystemVersion</key>
-    <string>13.0</string>
-    <key>LSUIElement</key>
-    <true/>
-    <key>NSHumanReadableCopyright</key>
-    <string>© 2026 tigre.paris</string>
-    <key>NSAppleEventsUsageDescription</key>
-    <string>DroppTimer pilote Musique, Spotify ou le système pour déclencher une action à la fin du minuteur.</string>
-    <key>SUEnableAutomaticChecks</key>
-    <true/>
-    <key>SUFeedURL</key>
-    <string>https://raw.githubusercontent.com/sandrophoto/dropptimer/main/appcast.xml</string>
-    <key>SUPublicEDKey</key>
-    <string>OetVFar5Enu9MytJ2fSb0lKIJm0bFVlXgMtCTSfr2fw=</string>
-    <key>SUScheduledCheckInterval</key>
-    <integer>86400</integer>
+	<key>CFBundleDisplayName</key>
+	<string>PullTheTimer Pro Plus 3000</string>
+	<key>CFBundleExecutable</key>
+	<string>PullTheTimer</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.tigre.dropptimer</string>
+	<key>CFBundleName</key>
+	<string>PullTheTimer Pro Plus 3000</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0.1</string>
+	<key>CFBundleVersion</key>
+	<string>1.0.1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>13.0</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>PullTheTimer Pro Plus 3000 pilote Musique, Spotify ou le système pour déclencher une action à la fin du minuteur.</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>© 2026 tigre.paris</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/sandrophoto/dropptimer/main/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>OetVFar5Enu9MytJ2fSb0lKIJm0bFVlXgMtCTSfr2fw=</string>
+	<key>SUScheduledCheckInterval</key>
+	<integer>86400</integer>
 </dict>
 </plist>

@@ -1,4 +1,4 @@
-# DroppTimer 💧
+# PullTheTimer Pro Plus 3000 💧
 
 Minuteur élégant dans la barre de menu macOS, réglé par un geste : tu tires une forme
 fine qui s'étire, la durée s'affiche à côté.
@@ -37,8 +37,8 @@ rétracte, s'amincit en un fil et se dissout, puis le minuteur démarre.
 
 ## Build
 ```bash
-./build.sh          # → Dist/DroppTimer.app (universel arm64+x86_64, signé ad-hoc)
-open Dist/DroppTimer.app
+./build.sh          # → Dist/PullTheTimer Pro Plus 3000.app (universel arm64+x86_64, signé ad-hoc)
+open Dist/PullTheTimer Pro Plus 3000.app
 ```
 Cible : macOS 13+ (requis pour `SMAppService`).
 

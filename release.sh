@@ -19,7 +19,7 @@ echo "▸ Version $VERSION dans l'Info.plist"
 
 echo "▸ Build de l'app + zip de distribution (signature propre, hors iCloud)"
 mkdir -p releases
-ZIP="releases/DroppTimer-$VERSION.zip"
+ZIP="releases/PullTheTimer-$VERSION.zip"
 ZIP_OUT="$PWD/$ZIP" ./build.sh
 
 echo "▸ Génération + signature de l'appcast (EdDSA)"

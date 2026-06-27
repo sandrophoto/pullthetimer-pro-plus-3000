@@ -290,6 +290,8 @@ final class Settings: ObservableObject {
     }
 }
 
+let appDisplayName = "PullTheTimer Pro Plus 3000"
+
 let systemSounds = ["Glass", "Ping", "Hero", "Submarine", "Funk",
                     "Bottle", "Frog", "Morse", "Purr", "Sosumi", "Tink"]
 
@@ -319,7 +321,7 @@ struct SettingsView: View {
     private var generalTab: some View {
         Form {
             Section {
-                Toggle("Ouvrir DroppTimer au démarrage", isOn: $settings.openAtLogin)
+                Toggle("Ouvrir au démarrage", isOn: $settings.openAtLogin)
                 Toggle("Garder l'icône dans le Dock", isOn: $settings.showInDock)
             }
             Section("Apparence") {
@@ -425,7 +427,7 @@ struct SettingsView: View {
 
 // MARK: - Fenêtre À propos (style maison STUPIDS STUDIO)
 struct AboutView: View {
-    private let appName = "DroppTimer"
+    private let appName = appDisplayName
     private let tagline = "Minuteur à tirer · dans la barre de menu"
     private let studio = "STUPIDS STUDIO"
     private let bg = Color(red: 0.11, green: 0.11, blue: 0.12)
@@ -450,8 +452,11 @@ struct AboutView: View {
                     .shadow(color: .black.opacity(0.35), radius: 12, y: 6)
 
                 Text(appName)
-                    .font(.system(size: 28, weight: .bold))
+                    .font(.system(size: 24, weight: .bold))
                     .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.7)
+                    .padding(.horizontal, 20)
                     .padding(.top, 22)
                 Text(tagline)
                     .font(.callout)
@@ -683,7 +688,7 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
     }
     func postNotification() {
         let content = UNMutableNotificationContent()
-        content.title = "DroppTimer"
+        content.title = appDisplayName
         content.body = settings.notifyText.isEmpty ? "Minuteur terminé" : settings.notifyText
         if settings.alarmOn { content.sound = .default }
         UNUserNotificationCenter.current().add(
@@ -788,7 +793,7 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
     static func setLoginItem(_ on: Bool) {
         if #available(macOS 13, *) {
             do { if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() } }
-            catch { NSLog("DroppTimer login item: \(error)") }
+            catch { NSLog("\(appDisplayName) login item: \(error)") }
         }
     }
 
@@ -800,7 +805,7 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
             }, onTestTriggers: { [weak self] in self?.testTriggers() })
             let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 480, height: 560),
                              styleMask: [.titled, .closable], backing: .buffered, defer: false)
-            w.title = "Options — DroppTimer"
+            w.title = "Options — \(appDisplayName)"
             w.contentView = NSHostingView(rootView: view)
             w.isReleasedWhenClosed = false
             w.center()
@@ -829,10 +834,10 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Options…", action: #selector(menuOptions), keyEquivalent: ","))
         menu.addItem(NSMenuItem(title: "Rechercher les mises à jour…", action: #selector(menuUpdate), keyEquivalent: ""))
-        menu.addItem(NSMenuItem(title: "À propos de DroppTimer", action: #selector(menuAbout), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "À propos de \(appDisplayName)", action: #selector(menuAbout), keyEquivalent: ""))
         for it in menu.items where it.target == nil && it.action != nil { it.target = self }
         // Quitter cible NSApp (terminate: n'existe pas sur le contrôleur)
-        let quit = NSMenuItem(title: "Quitter DroppTimer", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        let quit = NSMenuItem(title: "Quitter \(appDisplayName)", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         quit.target = NSApp
         menu.addItem(quit)
 
@@ -852,12 +857,12 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
 
         let appItem = NSMenuItem(); mainMenu.addItem(appItem)
         let appMenu = NSMenu()
-        let about = appMenu.addItem(withTitle: "À propos de DroppTimer", action: #selector(menuAbout), keyEquivalent: "")
+        let about = appMenu.addItem(withTitle: "À propos de \(appDisplayName)", action: #selector(menuAbout), keyEquivalent: "")
         about.target = self
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Préférences…", action: #selector(menuOptions), keyEquivalent: ",").target = self
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Quitter DroppTimer", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenu.addItem(withTitle: "Quitter \(appDisplayName)", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu
 
         let editItem = NSMenuItem(); mainMenu.addItem(editItem)

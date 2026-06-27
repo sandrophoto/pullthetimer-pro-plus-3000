@@ -2,8 +2,8 @@
 set -e
 cd "$(dirname "$0")"
 
-APP_NAME="DroppTimer.app"
-EXEC="DroppTimer"
+APP_NAME="PullTheTimer Pro Plus 3000.app"
+EXEC="PullTheTimer"
 DEST="${DEST:-Dist}"          # où atterrit le .app final (copie locale)
 ZIP_OUT="${ZIP_OUT:-}"        # si défini : produit un zip pristine depuis le staging
 

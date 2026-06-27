@@ -19,7 +19,7 @@ fi
 
 # 1) Build + zip + appcast signé.
 ./release.sh "$VERSION"
-ZIP="releases/DroppTimer-$VERSION.zip"
+ZIP="releases/PullTheTimer-$VERSION.zip"
 
 # 2) Release GitHub : créer (ou mettre à jour) + uploader le zip.
 echo "▸ Publication de la Release v$VERSION sur GitHub"
@@ -27,7 +27,7 @@ if gh release view "v$VERSION" -R "$SLUG" >/dev/null 2>&1; then
     gh release upload "v$VERSION" "$ZIP" -R "$SLUG" --clobber
 else
     gh release create "v$VERSION" "$ZIP" -R "$SLUG" \
-        -t "DroppTimer $VERSION" -n "Mise à jour automatique $VERSION."
+        -t "PullTheTimer Pro Plus 3000 $VERSION" -n "Mise à jour automatique $VERSION."
 fi
 
 # 3) Commit de appcast.xml via l'API (sans clone local).

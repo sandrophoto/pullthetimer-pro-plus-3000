@@ -70,7 +70,8 @@ nav.scrolled{background:rgba(8,9,18,.7);box-shadow:0 1px 0 rgba(255,255,255,.06)
 .btn.ghost:hover{background:rgba(255,255,255,.1);transform:translateY(-2px)}
 
 /* ---------- Bille pilotée par le scroll ---------- */
-.scrollpull{position:fixed;top:0;right:calc(20vw + clamp(16px,2.4vw,46px));width:22px;height:100vh;z-index:3;pointer-events:none}
+.scrollpull{position:fixed;top:0;right:calc(20vw + clamp(16px,2.4vw,46px));width:22px;height:100vh;z-index:1;pointer-events:none}
+main{position:relative;z-index:2}   /* le contenu (et ses boîtes) passe DEVANT la bille */
 .spline{position:absolute;top:0;left:50%;transform:translateX(-50%);width:3px;height:40px;border-radius:3px;
   background:linear-gradient(180deg,rgba(159,192,255,.25),#7db0ff 60%,#2f6bff);
   box-shadow:0 0 16px rgba(59,130,246,.6);transition:height .12s linear}

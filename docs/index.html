@@ -84,6 +84,9 @@ main{position:relative;z-index:2}   /* le contenu (et ses boîtes) passe DEVANT 
 .hero{min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;
   padding:150px clamp(18px,5vw,56px) 90px;max-width:1280px;margin:0 auto}
 .hero-inner{max-width:760px;display:flex;flex-direction:column;align-items:center}
+.appicon{margin-bottom:30px;filter:drop-shadow(0 22px 48px rgba(47,107,255,.55));animation:floaty 5s ease-in-out infinite}
+.appicon svg{display:block}
+@keyframes floaty{50%{transform:translateY(-8px)}}
 .scrollcue{margin-top:40px;color:var(--muted);font-size:13px;letter-spacing:.08em;text-transform:uppercase;
   animation:bob 2.4s ease-in-out infinite}
 @keyframes bob{50%{transform:translateY(6px);opacity:.6}}
@@ -179,7 +182,20 @@ footer{padding:50px clamp(18px,5vw,56px);border-top:1px solid var(--stroke);
 <main id="top">
 <section class="hero">
   <div class="hero-inner">
-    <div class="tag reveal"><span class="dot"></span> macOS · barre de menu · gratuit</div>
+    <div class="appicon reveal">
+      <svg viewBox="0 0 100 100" width="124" height="124" role="img" aria-label="Icône PullTheTimer Pro Plus 3000">
+        <defs>
+          <linearGradient id="ai" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#43a0ff"/><stop offset=".55" stop-color="#2173fa"/><stop offset="1" stop-color="#124cdb"/>
+          </linearGradient>
+        </defs>
+        <rect x="6" y="6" width="88" height="88" rx="19.7" fill="url(#ai)"/>
+        <rect x="6" y="6" width="88" height="44" rx="19.7" fill="#fff" opacity=".06"/>
+        <line x1="50" y1="23.6" x2="50" y2="67.6" stroke="#fff" stroke-width="4.4" stroke-linecap="round"/>
+        <circle cx="50" cy="67.6" r="9.2" fill="#fff"/>
+      </svg>
+    </div>
+    <div class="tag reveal d1"><span class="dot"></span> macOS · barre de menu · gratuit</div>
     <h1 class="reveal d1">Tire. Lâche.<br><span class="grad">Le temps file.</span></h1>
     <p class="sub reveal d2">Un minuteur qui vit dans ta barre de menu et se règle d'un seul geste : clique sur la bille, tire vers le bas, une ligne s'étire avec la durée. Relâche — c'est parti.</p>
     <div class="cta reveal d3">

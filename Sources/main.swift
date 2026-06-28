@@ -320,14 +320,57 @@ func asEscape(_ s: String) -> String {
 let systemSounds = ["Glass", "Ping", "Hero", "Submarine", "Funk",
                     "Bottle", "Frog", "Morse", "Purr", "Sosumi", "Tink"]
 
-// MARK: - Fenêtre Options (SwiftUI)
+// MARK: - Fenêtre Options (SwiftUI — style barre latérale + cartes)
 struct RunningApp: Identifiable, Hashable { let id: String; let name: String }
+
+// Flou « behind-window » (le bureau transparaît, façon Réglages translucides)
+struct VEffect: NSViewRepresentable {
+    var material: NSVisualEffectView.Material = .sidebar
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let v = NSVisualEffectView(); v.material = material; v.blendingMode = .behindWindow; v.state = .active; return v
+    }
+    func updateNSView(_ v: NSVisualEffectView, context: Context) { v.material = material }
+}
+
+// Petite tuile d'icône colorée (SF Symbol blanc sur dégradé)
+struct IconTile: View {
+    let symbol: String; let color: Color; var size: CGFloat = 24
+    var body: some View {
+        RoundedRectangle(cornerRadius: size * 0.28, style: .continuous).fill(color.gradient)
+            .frame(width: size, height: size)
+            .overlay(Image(systemName: symbol).font(.system(size: size * 0.5, weight: .semibold)).foregroundStyle(.white))
+            .shadow(color: color.opacity(0.45), radius: 2, y: 1)
+    }
+}
+
+enum SettingsPane: Hashable, CaseIterable {
+    case general, appearance, repeatT, alarm, notif, actions, system, updates, about
+    var title: String {
+        switch self {
+        case .general: "Général"; case .appearance: "Apparence"; case .repeatT: "Répétition"
+        case .alarm: "Alarme"; case .notif: "Notification"; case .actions: "Actions"
+        case .system: "Système"; case .updates: "Mise à jour"; case .about: "À propos" }
+    }
+    var symbol: String {
+        switch self {
+        case .general: "gearshape.fill"; case .appearance: "paintbrush.fill"; case .repeatT: "repeat"
+        case .alarm: "bell.fill"; case .notif: "app.badge.fill"; case .actions: "bolt.fill"
+        case .system: "power"; case .updates: "arrow.triangle.2.circlepath"; case .about: "info.circle.fill" }
+    }
+    var color: Color {
+        switch self {
+        case .general: .gray; case .appearance: .purple; case .repeatT: .blue
+        case .alarm: .orange; case .notif: .red; case .actions: .yellow
+        case .system: .pink; case .updates: .green; case .about: .teal }
+    }
+}
 
 struct SettingsView: View {
     @ObservedObject var settings: Settings
     var onTestSound: () -> Void
     var onTestTriggers: () -> Void
     @State private var autoCheck = Updater.shared.automaticallyChecks
+    @State private var pane: SettingsPane = .general
 
     var runningApps: [RunningApp] {
         NSWorkspace.shared.runningApplications
@@ -337,133 +380,281 @@ struct SettingsView: View {
     }
 
     var body: some View {
-        TabView {
-            generalTab.tabItem { Label("Général", systemImage: "gearshape") }
-            triggersTab.tabItem { Label("Déclencheurs", systemImage: "bell.badge") }
-            updatesTab.tabItem { Label("Mise à jour", systemImage: "arrow.triangle.2.circlepath") }
+        HStack(spacing: 0) {
+            sidebar
+            Rectangle().fill(.white.opacity(0.08)).frame(width: 1)
+            detail
         }
-        .frame(width: 480, height: 560)
+        .frame(width: 772, height: 562)
+        .tint(Color(red: 0.20, green: 0.80, blue: 0.62))
+        .background(VEffect(material: .underWindowBackground))
     }
 
-    private var updatesTab: some View {
-        Form {
-            Section {
-                LabeledContent("Application", value: appDisplayName)
-                LabeledContent("Version", value: Updater.shared.currentVersion)
+    // MARK: Barre latérale
+    private var sidebar: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 4) {
+                sideRow(.general)
+                sideGroup("Minuteur", [.appearance, .repeatT])
+                sideGroup("Fin du minuteur", [.alarm, .notif, .actions, .system])
+                sideGroup("Application", [.updates, .about])
             }
-            Section("Mises à jour automatiques") {
-                Toggle("Vérifier automatiquement chaque jour", isOn: $autoCheck)
-                    .onChange(of: autoCheck) { Updater.shared.automaticallyChecks = $0 }
-                LabeledContent("Dernière vérification", value: lastCheckText)
-                Button("Rechercher les mises à jour maintenant…") { Updater.shared.checkForUpdates() }
+            .padding(.horizontal, 12).padding(.vertical, 16)
+        }
+        .frame(width: 234)
+        .background(VEffect(material: .sidebar))
+    }
+    private func sideGroup(_ title: String, _ items: [SettingsPane]) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title.uppercased()).font(.system(size: 11, weight: .semibold)).tracking(0.6)
+                .foregroundStyle(.secondary).padding(.leading, 8).padding(.top, 14).padding(.bottom, 2)
+            ForEach(items, id: \.self) { sideRow($0) }
+        }
+    }
+    private func sideRow(_ p: SettingsPane) -> some View {
+        Button { pane = p } label: {
+            HStack(spacing: 10) {
+                IconTile(symbol: p.symbol, color: p.color)
+                Text(p.title).font(.system(size: 13.5, weight: .medium)).foregroundStyle(.primary)
+                Spacer(minLength: 0)
             }
-            Section {
-                Text("Les mises à jour sont téléchargées et installées automatiquement depuis GitHub (signées et vérifiées).")
-                    .font(.caption).foregroundColor(.secondary)
+            .padding(.horizontal, 8).padding(.vertical, 6)
+            .background(RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(pane == p ? Color.primary.opacity(0.13) : .clear))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: Panneau de détail
+    private var detail: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                HStack(spacing: 12) {
+                    IconTile(symbol: pane.symbol, color: pane.color, size: 30)
+                    Text(pane.title).font(.system(size: 24, weight: .bold))
+                }
+                paneContent
+            }
+            .padding(28).frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    @ViewBuilder private var paneContent: some View {
+        switch pane {
+        case .general: generalPane
+        case .appearance: appearancePane
+        case .repeatT: repeatPane
+        case .alarm: alarmPane
+        case .notif: notifPane
+        case .actions: actionsPane
+        case .system: systemPane
+        case .updates: updatesPane
+        case .about: aboutPane
+        }
+    }
+
+    // MARK: Briques d'UI
+    private var rdiv: some View { Rectangle().fill(.white.opacity(0.07)).frame(height: 1).padding(.leading, 16) }
+    private func card<C: View>(@ViewBuilder _ c: () -> C) -> some View {
+        VStack(spacing: 0) { c() }
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(.white.opacity(0.05)))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.white.opacity(0.07)))
+    }
+    private func row<C: View>(_ title: String, _ sub: String? = nil, @ViewBuilder _ control: () -> C) -> some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.system(size: 14))
+                if let sub { Text(sub).font(.caption).foregroundStyle(.secondary) }
+            }
+            Spacer(minLength: 10)
+            control()
+        }
+        .padding(.horizontal, 16).padding(.vertical, 11)
+    }
+    private func subHead(_ t: String) -> some View {
+        Text(t.uppercased()).font(.system(size: 11, weight: .semibold)).tracking(0.6)
+            .foregroundStyle(.secondary).padding(.leading, 4)
+    }
+    private func sw(_ on: Binding<Bool>) -> some View { Toggle("", isOn: on).labelsHidden().toggleStyle(.switch) }
+
+    // MARK: Panes
+    @ViewBuilder private var generalPane: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            card {
+                row("Ouvrir au démarrage") { sw($settings.openAtLogin) }
+                rdiv
+                row("Garder l'icône dans le Dock") { sw($settings.showInDock) }
             }
         }
-        .formStyle(.grouped)
     }
+    @ViewBuilder private var appearancePane: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            card {
+                row("Icône de la barre de menu") {
+                    Picker("", selection: $settings.trayColor) { Text("Couleur").tag(true); Text("Noir et blanc").tag(false) }
+                        .labelsHidden().frame(width: 150)
+                }
+                rdiv
+                row("Affichage du temps") {
+                    Picker("", selection: $settings.timeFormat) { Text("23m45s").tag(0); Text("01h23m45s").tag(1) }
+                        .labelsHidden().frame(width: 130)
+                }
+            }
+        }
+    }
+    @ViewBuilder private var repeatPane: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            card {
+                row("Répéter le minuteur") { sw($settings.repeatEnabled) }
+                if settings.repeatEnabled {
+                    rdiv
+                    row("Répéter à l'infini") { sw($settings.repeatInfinite) }
+                    if !settings.repeatInfinite {
+                        rdiv
+                        row("Nombre de répétitions") {
+                            HStack(spacing: 8) {
+                                Text("\(settings.repeatCount)").monospacedDigit().foregroundStyle(.secondary)
+                                Stepper("", value: $settings.repeatCount, in: 2...99).labelsHidden()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    @ViewBuilder private var alarmPane: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            card {
+                row("Alarme sonore") { sw($settings.alarmOn) }
+                if settings.alarmOn {
+                    rdiv
+                    row("Son") {
+                        HStack(spacing: 8) {
+                            Picker("", selection: $settings.soundName) { ForEach(systemSounds, id: \.self) { Text($0).tag($0) } }
+                                .labelsHidden().frame(width: 120)
+                            Button("Tester", action: onTestSound)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    @ViewBuilder private var notifPane: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            card {
+                row("Afficher une notification") { sw($settings.actNotify) }
+                if settings.actNotify {
+                    rdiv
+                    row("Message") { TextField("Minuteur terminé", text: $settings.notifyText).frame(width: 220) }
+                }
+            }
+        }
+    }
+    @ViewBuilder private var actionsPane: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            card {
+                row("Lancer une application") { sw($settings.actLaunchApp) }
+                if settings.actLaunchApp {
+                    rdiv
+                    row(settings.launchAppPath.isEmpty ? "Aucune app choisie" : (settings.launchAppPath as NSString).lastPathComponent) {
+                        Button("Choisir…", action: chooseApp)
+                    }
+                }
+                rdiv
+                row("Ouvrir une page web") { sw($settings.actOpenURL) }
+                if settings.actOpenURL {
+                    rdiv
+                    row("Adresse") { TextField("https://…", text: $settings.urlString).frame(width: 220) }
+                }
+                rdiv
+                row("Fermer une application") { sw($settings.actQuitApp) }
+                if settings.actQuitApp {
+                    rdiv
+                    row("Application") {
+                        Picker("", selection: $settings.quitAppBundleId) {
+                            Text("Choisir…").tag("")
+                            ForEach(runningApps) { Text($0.name).tag($0.id) }
+                            if !settings.quitAppBundleId.isEmpty && !runningApps.contains(where: { $0.id == settings.quitAppBundleId }) {
+                                Text(settings.quitAppName.isEmpty ? settings.quitAppBundleId : settings.quitAppName).tag(settings.quitAppBundleId)
+                            }
+                        }
+                        .labelsHidden().frame(width: 180)
+                        .onChange(of: settings.quitAppBundleId) { id in
+                            settings.quitAppName = runningApps.first { $0.id == id }?.name ?? settings.quitAppName
+                        }
+                    }
+                }
+            }
+            Button("Tester les déclencheurs maintenant", action: onTestTriggers)
+            Text("Le test exécute ces actions (sauf veille / extinction).")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+    }
+    @ViewBuilder private var systemPane: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            card {
+                row("Mettre l'ordinateur en veille") { sw($settings.actSleep) }
+                rdiv
+                row("Éteindre l'ordinateur") { sw($settings.actShutdown) }
+            }
+            if settings.actSleep || settings.actShutdown {
+                Text("⚠︎ La première fois, macOS demandera l'autorisation d'automatiser « System Events ».")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+    @ViewBuilder private var updatesPane: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            card {
+                row("Application") { Text(appDisplayName).foregroundStyle(.secondary) }
+                rdiv
+                row("Version") { Text(Updater.shared.currentVersion).foregroundStyle(.secondary) }
+            }
+            subHead("Mises à jour automatiques")
+            card {
+                row("Vérifier chaque jour") {
+                    sw($autoCheck).onChange(of: autoCheck) { Updater.shared.automaticallyChecks = $0 }
+                }
+                rdiv
+                row("Dernière vérification") { Text(lastCheckText).foregroundStyle(.secondary) }
+            }
+            Button("Rechercher les mises à jour maintenant…") { Updater.shared.checkForUpdates() }
+            Text("Téléchargées et installées automatiquement depuis GitHub (signées et vérifiées).")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+    }
+    @ViewBuilder private var aboutPane: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 16) {
+                Image(nsImage: NSApp.applicationIconImage).resizable().frame(width: 84, height: 84)
+                    .shadow(color: .black.opacity(0.3), radius: 8, y: 4)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(appDisplayName).font(.system(size: 18, weight: .bold))
+                    Text("Minuteur à tirer · barre de menu").font(.callout).foregroundStyle(.secondary)
+                    Text("Version \(Updater.shared.currentVersion)").font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            card {
+                row("Réalisé par") {
+                    Text("STUPIDS STUDIO").font(.system(size: 14, weight: .heavy))
+                        .foregroundStyle(LinearGradient(colors: [Color(red:0.95,green:0.2,blue:0.2), Color(red:1,green:0.62,blue:0.1)],
+                                                        startPoint: .leading, endPoint: .trailing))
+                }
+            }
+            HStack(spacing: 10) {
+                Button("Site web") { if let u = URL(string: "https://tigre.paris") { NSWorkspace.shared.open(u) } }
+                Button("GitHub") { if let u = URL(string: "https://github.com/sandrophoto/pullthetimer-pro-plus-3000") { NSWorkspace.shared.open(u) } }
+                Button("Contact") { if let u = URL(string: "mailto:sandro@tigre.paris") { NSWorkspace.shared.open(u) } }
+            }
+            Text("© 2026 STUPIDS STUDIO").font(.caption2).foregroundStyle(.secondary)
+        }
+    }
+
     private var lastCheckText: String {
         guard let d = Updater.shared.lastCheck else { return "jamais" }
         let f = DateFormatter(); f.dateStyle = .medium; f.timeStyle = .short
         return f.string(from: d)
-    }
-
-    private var generalTab: some View {
-        Form {
-            Section {
-                Toggle("Ouvrir au démarrage", isOn: $settings.openAtLogin)
-                Toggle("Garder l'icône dans le Dock", isOn: $settings.showInDock)
-            }
-            Section("Apparence") {
-                Picker("Icône de la barre de menu", selection: $settings.trayColor) {
-                    Text("Couleur").tag(true)
-                    Text("Noir et blanc").tag(false)
-                }
-                Picker("Affichage du temps", selection: $settings.timeFormat) {
-                    Text("Minutes, secondes (23m45s)").tag(0)
-                    Text("Heures, minutes, secondes (01h23m45s)").tag(1)
-                }
-            }
-            Section("Répétition") {
-                Toggle("Répéter le minuteur", isOn: $settings.repeatEnabled)
-                if settings.repeatEnabled {
-                    Toggle("Répéter à l'infini", isOn: $settings.repeatInfinite)
-                    if !settings.repeatInfinite {
-                        Stepper("Nombre de répétitions : \(settings.repeatCount)",
-                                value: $settings.repeatCount, in: 2...99)
-                    }
-                }
-            }
-        }
-        .formStyle(.grouped)
-    }
-
-    private var triggersTab: some View {
-        Form {
-            Section("À la fin du minuteur") {
-                Toggle("Alarme sonore", isOn: $settings.alarmOn)
-                if settings.alarmOn {
-                    HStack {
-                        Picker("Son", selection: $settings.soundName) {
-                            ForEach(systemSounds, id: \.self) { Text($0).tag($0) }
-                        }
-                        Button("Tester", action: onTestSound)
-                    }
-                }
-
-                Toggle("Afficher une notification", isOn: $settings.actNotify)
-                if settings.actNotify {
-                    TextField("Message", text: $settings.notifyText)
-                }
-
-                Toggle("Lancer une application", isOn: $settings.actLaunchApp)
-                if settings.actLaunchApp {
-                    HStack {
-                        Text(settings.launchAppPath.isEmpty ? "Aucune"
-                             : (settings.launchAppPath as NSString).lastPathComponent)
-                            .foregroundColor(.secondary).lineLimit(1)
-                        Spacer()
-                        Button("Choisir…", action: chooseApp)
-                    }
-                }
-
-                Toggle("Ouvrir une page web", isOn: $settings.actOpenURL)
-                if settings.actOpenURL {
-                    TextField("https://…", text: $settings.urlString)
-                }
-
-                Toggle("Fermer une application", isOn: $settings.actQuitApp)
-                if settings.actQuitApp {
-                    Picker("Application", selection: $settings.quitAppBundleId) {
-                        Text("Choisir…").tag("")
-                        ForEach(runningApps) { Text($0.name).tag($0.id) }
-                        // garde l'app choisie même si elle n'est plus lancée
-                        if !settings.quitAppBundleId.isEmpty && !runningApps.contains(where: { $0.id == settings.quitAppBundleId }) {
-                            Text(settings.quitAppName.isEmpty ? settings.quitAppBundleId : settings.quitAppName)
-                                .tag(settings.quitAppBundleId)
-                        }
-                    }
-                    .onChange(of: settings.quitAppBundleId) { id in
-                        settings.quitAppName = runningApps.first { $0.id == id }?.name ?? settings.quitAppName
-                    }
-                }
-
-                Divider()
-                Toggle("Mettre l'ordinateur en veille", isOn: $settings.actSleep)
-                Toggle("Éteindre l'ordinateur", isOn: $settings.actShutdown)
-                if settings.actSleep || settings.actShutdown {
-                    Text("⚠︎ La première fois, macOS demandera l'autorisation d'automatiser « System Events ».")
-                        .font(.caption).foregroundColor(.secondary)
-                }
-
-                Button("Tester les déclencheurs maintenant", action: onTestTriggers)
-                Text("Le test exécute les actions ci-dessus (sauf veille / extinction).")
-                    .font(.caption).foregroundColor(.secondary)
-            }
-        }
-        .formStyle(.grouped)
     }
 
     func chooseApp() {
@@ -983,10 +1174,16 @@ final class AppController: NSObject, NSApplicationDelegate, UNUserNotificationCe
             let view = SettingsView(settings: settings, onTestSound: { [weak self] in
                 if let n = self?.settings.soundName { NSSound(named: n)?.play() }
             }, onTestTriggers: { [weak self] in self?.testTriggers() })
-            let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 480, height: 560),
-                             styleMask: [.titled, .closable], backing: .buffered, defer: false)
+            let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 772, height: 562),
+                             styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
             w.title = "Options — \(appDisplayName)"
-            w.contentView = NSHostingView(rootView: view)
+            w.titlebarAppearsTransparent = true
+            w.titleVisibility = .hidden
+            w.isMovableByWindowBackground = true
+            w.isOpaque = false
+            w.backgroundColor = .clear
+            let host = NSHostingView(rootView: view)
+            w.contentView = host
             w.isReleasedWhenClosed = false
             w.center()
             settingsWindow = w

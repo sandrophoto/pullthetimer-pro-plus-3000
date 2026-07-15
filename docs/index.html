@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PullTheTimer Pro Plus 3000 — le minuteur qu'on tire</title>
+<meta name="description" content="Un minuteur macOS dans la barre de menu, réglé d'un geste : tu tires, ça s'étire, tu lâches. Élégant, fluide, hyper rapide.">
+<link rel="icon" href="icon.png">
+<meta name="theme-color" content="#F2EFE6">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script>document.documentElement.classList.add('js')</script>
+<style>
+:root{
+  --paper:#F2EFE6;--paper-2:#E7E3D6;--ink:#121212;
+  --blue:#2340D4;--red:#E8412A;--yellow:#F7C51E;--white:#fff;
+  /* couleur de CETTE app, extraite de son icône */
+  --app:#3086FC;--panel:#0361E2;
+  --sans:"Archivo","Helvetica Neue",Helvetica,-apple-system,BlinkMacSystemFont,Arial,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+/* v2 : plus de cadre de page. Le papier va bord à bord. */
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1180px;margin:0 auto;padding:0 32px;width:100%}
+.eyebrow{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.16em;color:var(--app)}
+
+/* ---------- NAV — un filet, pas une boîte ---------- */
+nav{border-bottom:2px solid var(--ink);background:var(--paper);position:sticky;top:0;z-index:60}
+.nav-in{display:flex;align-items:center;justify-content:space-between;height:70px;gap:20px}
+.logo{display:flex;align-items:center;gap:6px;flex:none}
+.logo .sq{width:22px;height:22px;background:var(--red);color:var(--white);font-family:var(--mono);
+  font-size:10px;font-weight:700;display:grid;place-items:center}
+.logo .ci{width:18px;height:18px;border-radius:50%;background:var(--blue)}
+.logo .tr{width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-bottom:16px solid var(--red)}
+.logo .rc{width:18px;height:18px;background:var(--yellow)}
+.logo .name{margin-left:8px;font-weight:800;letter-spacing:-.02em;font-size:16px;white-space:nowrap}
+.logo .name small{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.12em;
+  text-transform:uppercase;color:#5a5a5a;margin-left:6px}
+.logo .ci,.logo .tr,.logo .rc{transition:transform .35s var(--ease)}
+.logo:hover .ci{transform:translateY(-4px)}
+.logo:hover .tr{transform:rotate(-15deg)}
+.logo:hover .rc{transform:rotate(45deg)}
+.nav-links{display:none;align-items:center;gap:30px}
+@media(min-width:900px){.nav-links{display:flex}}
+.nav-links a:not(.btn){font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.14em;
+  position:relative;padding:4px 0}
+.nav-links a:not(.btn)::after{content:"";position:absolute;left:0;bottom:0;height:3px;width:0;background:var(--app);
+  transition:width .28s var(--ease)}
+.nav-links a:not(.btn):hover::after{width:100%}
+
+/* ---------- BOUTONS — un seul plein, le reste en liens soulignés ---------- */
+.btn{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;
+  text-transform:uppercase;letter-spacing:.1em;padding:14px 22px;border:0;
+  background:var(--ink);color:var(--paper);cursor:pointer;white-space:nowrap;
+  transition:transform .18s var(--ease),box-shadow .18s var(--ease)}
+.btn:hover{transform:translate(-3px,-3px);box-shadow:4px 4px 0 var(--app)}
+.btn .ar{transition:transform .18s var(--ease)}
+.btn:hover .ar{transform:translateX(4px)}
+nav .btn{padding:11px 16px}
+.lnk{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:12px;
+  text-transform:uppercase;letter-spacing:.1em;border-bottom:2px solid var(--ink);padding-bottom:3px;
+  transition:color .2s,border-color .2s}
+.lnk:hover{color:var(--app);border-color:var(--app)}
+
+/* ---------- HERO ---------- */
+.hero{display:grid;grid-template-columns:1fr}
+@media(min-width:900px){.hero{grid-template-columns:1.1fr .9fr}}
+.hero-l{padding:66px 32px 60px;max-width:680px;margin-left:auto;width:100%}
+@media(min-width:900px){.hero-l{padding:80px 52px 74px}}
+.hero h1{font-size:clamp(40px,5.4vw,74px);font-weight:900;line-height:.96;letter-spacing:-.035em;margin:24px 0 0}
+.hero .sub{margin-top:24px;font-size:16.5px;line-height:1.55;max-width:44ch;color:#2b2b2b}
+.cta{display:flex;gap:26px;align-items:center;flex-wrap:wrap;margin-top:34px}
+.ver{margin-top:22px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#5a5a5a}
+
+/* panneau : aplat qui saigne, aucune bordure */
+.hero-r{background:var(--panel);position:relative;overflow:hidden;min-height:540px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:30px 0}
+@media(max-width:899px){.hero-r{min-height:400px}}
+.hero-r .circle{position:absolute;top:-110px;right:-80px;width:290px;height:290px;border-radius:50%;
+  background:var(--yellow);animation:bob 9s ease-in-out infinite}
+/* pas de translateX(-50%) ici : un transform qui centre + reduced-motion = piège */
+.hero-r .tri{position:absolute;bottom:-24px;left:-30px;width:0;height:0;
+  border-left:62px solid transparent;border-right:62px solid transparent;border-bottom:104px solid var(--red);
+  animation:bob 11s ease-in-out infinite}
+@keyframes bob{50%{transform:translateY(20px)}}
+.par{transition:translate .5s var(--ease)}
+
+/* ---------- EFFET SIGNATURE : la bille qu'on tire ----------
+   LE geste de l'app, jouable à la souris comme au doigt : on attrape la
+   bille sous la barre de menu, on tire vers le bas, le fil s'allonge et la
+   durée monte. On lâche : la bille remonte d'un coup, le décompte part.
+   --y = la distance tirée, posée par le JS. --px = l'abscisse du fil. */
+.pull{position:relative;z-index:2;width:min(400px,86%);background:var(--ink);--y:0px;--px:70%}
+
+/* la fausse barre de menu : un aplat plus clair, pas un filet */
+.mbar{position:relative;height:24px;background:#1f1f1f}
+.mbar .mi{position:absolute;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:8.5px;
+  letter-spacing:.14em;text-transform:uppercase;color:#6f6f6f;white-space:nowrap}
+.mbar .app{left:10px;color:#9a9a9a}
+.mbar .clk{right:10px}
+/* la bille au repos vit ICI, dans la barre de menu */
+.mbar .anch{position:absolute;left:var(--px);top:50%;transform:translate(-50%,-50%);
+  width:8px;height:8px;border-radius:50%;background:var(--app)}
+
+.stage{position:relative;height:380px;touch-action:none}
+@media(max-width:899px){.stage{height:270px}}
+/* le fil : il pousse depuis la barre de menu */
+.thread{position:absolute;left:var(--px);top:0;transform:translateX(-50%);width:3px;
+  height:calc(16px + var(--y));background:var(--app)}
+/* la bille : elle se vide quand on tire, l'encre part dans le fil */
+.ball{position:absolute;left:var(--px);top:calc(16px + var(--y));transform:translate(-50%,-50%);
+  width:26px;height:26px;border-radius:50%;background:#2c2c2c;overflow:hidden;cursor:grab;touch-action:none}
+.pull.grab .ball{cursor:grabbing}
+.ball .f{position:absolute;left:0;right:0;bottom:0;height:var(--f,100%);background:var(--app)}
+
+.stt{position:absolute;left:16px;top:34px;display:flex;align-items:center;gap:8px;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:#8f8f8f}
+.stt::before{content:"";width:7px;height:7px;background:#3a3a3a;flex:none;transition:background .2s}
+.pull.run .stt::before{background:var(--app);animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:.25}}
+.dur{position:absolute;left:16px;top:58px;font-family:var(--mono);font-weight:700;
+  font-size:clamp(38px,6vw,52px);line-height:1;letter-spacing:-.02em;color:var(--paper);
+  font-variant-numeric:tabular-nums}
+.hint{position:absolute;left:16px;bottom:16px;font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--app);transition:opacity .3s}
+.hint i{display:inline-block;font-style:normal;animation:nudge 1.4s ease-in-out infinite}
+@keyframes nudge{50%{transform:translateY(4px)}}
+.hint.gone{opacity:0}
+
+.rules{position:relative;z-index:2;display:flex;gap:20px;flex-wrap:wrap;justify-content:center}
+.rules div{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--white);text-transform:uppercase}
+
+/* ---------- TICKER — aplat plein ---------- */
+.ticker{background:var(--ink);color:var(--paper);overflow:hidden;padding:15px 0}
+.ticker .track{display:flex;width:max-content;animation:scrollx 32s linear infinite}
+.ticker b{font-family:var(--mono);font-size:11px;font-weight:400;text-transform:uppercase;
+  letter-spacing:.14em;white-space:nowrap;display:flex;align-items:center;gap:38px;padding-right:38px}
+.ticker b::after{content:"";width:7px;height:7px;background:var(--app);flex:none}
+@keyframes scrollx{to{transform:translateX(-50%)}}
+
+/* ---------- L'APP ----------
+   Maquette de l'interface réelle : le décompte dans la barre de menu (le temps
+   à gauche de la bille, qui se remplit à mesure), puis la fenêtre Options avec
+   sa barre latérale groupée et le volet « Actions ». Mêmes libellés que l'app.
+   Rendue en aplats plutôt qu'en capture : pas de bordures, pas d'arrondis. */
+.shot{background:var(--paper-2)}
+/* la barre de menu macOS : le minuteur y vit */
+.shot .mb{background:var(--ink);display:flex;align-items:center;justify-content:flex-end;gap:9px;padding:8px 16px}
+.shot .mb .tm{font-family:var(--mono);font-size:11px;color:var(--paper);font-variant-numeric:tabular-nums}
+.shot .mb .dk{position:relative;width:15px;height:15px;border-radius:50%;background:#2f2f2f;overflow:hidden;flex:none}
+.shot .mb .dk i{position:absolute;left:0;right:0;bottom:0;height:56%;background:var(--app)}
+.shot .mb .cl{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:#8f8f8f;margin-left:14px}
+.shot .body{padding:22px}
+/* barre de titre de la fenêtre */
+.shot .bar{background:var(--ink);padding:11px 16px;display:flex;align-items:center;gap:8px}
+.shot .bar i{width:9px;height:9px;border-radius:50%;flex:none}
+.shot .bar i:nth-child(1){background:var(--red)}
+.shot .bar i:nth-child(2){background:var(--yellow)}
+.shot .bar i:nth-child(3){background:var(--app)}
+.shot .bar span{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:#8f8f8f;margin-left:8px}
+.shot .win-b{display:grid;grid-template-columns:1fr}
+@media(min-width:700px){.shot .win-b{grid-template-columns:216px 1fr}}
+/* barre latérale : les volets, groupés comme dans l'app */
+.shot .side{background:var(--paper);padding:14px 12px}
+.shot .sg{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:#8f8f8f;padding:14px 8px 4px}
+.shot .sr{font-size:13px;font-weight:600;padding:7px 8px}
+.shot .sr.on{background:var(--app);color:var(--white)}
+/* volet de détail */
+.shot .pane{background:var(--white);padding:20px}
+.shot .pane h4{font-size:19px;font-weight:900;letter-spacing:-.02em;margin-bottom:14px}
+.shot .opt{display:flex;align-items:center;gap:12px;padding:10px 12px;background:var(--paper-2);
+  margin-bottom:5px;font-size:13.5px}
+.shot .opt.ind{background:var(--paper);margin-left:20px;font-size:12.5px;color:#3a3a3a}
+.shot .tg{margin-left:auto;position:relative;width:30px;height:16px;background:#c9c9c9;flex:none}
+.shot .tg i{position:absolute;top:2px;left:2px;width:12px;height:12px;background:var(--white)}
+.shot .tg.on{background:var(--app)}
+.shot .tg.on i{left:16px}
+.shot .fld{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:#5a5a5a;background:var(--white);padding:5px 10px}
+.shot .bt{margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:.08em;
+  background:var(--ink);color:var(--paper);padding:5px 10px}
+.shot .test{display:inline-block;margin-top:12px;font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+  text-transform:uppercase;background:var(--ink);color:var(--paper);padding:9px 16px}
+.shot .cap{font-family:var(--mono);font-size:10.5px;color:#8f8f8f;margin-top:10px}
+
+/* ---------- SECTIONS ---------- */
+section{padding:74px 0}
+.sec-head{display:flex;justify-content:space-between;align-items:baseline;gap:20px;flex-wrap:wrap;
+  border-top:2px solid var(--ink);padding-top:16px;margin-bottom:40px}
+.sec-head .note{font-family:var(--mono);font-size:12px;color:#3a3a3a;letter-spacing:.04em}
+h2{font-size:clamp(30px,4.4vw,54px);font-weight:900;line-height:.98;letter-spacing:-.03em}
+.lead{font-size:16px;line-height:1.55;color:#3a3a3a;max-width:56ch;margin-top:12px}
+
+/* ---------- TUILES — un filet en haut, pas de boîte ---------- */
+.tiles{display:grid;grid-template-columns:1fr;gap:0 44px}
+@media(min-width:700px){.tiles{grid-template-columns:1fr 1fr}}
+@media(min-width:1040px){.tiles{grid-template-columns:1fr 1fr 1fr}}
+.tile{padding:20px 0 28px;border-top:2px solid var(--ink)}
+.tile .ic{font-size:22px;display:block;margin-bottom:12px}
+.tile h3{font-size:17px;font-weight:800;letter-spacing:-.02em;margin-bottom:7px}
+.tile p{font-size:14px;line-height:1.5;color:#3a3a3a}
+.tile b{font-weight:700;color:var(--ink)}
+.tile .bar{height:4px;width:0;background:var(--app);margin-top:14px;transition:width .35s var(--ease)}
+.tile:hover .bar{width:44px}
+
+/* ---------- ÉTAPES — gros chiffres, aucune carte ---------- */
+.steps{display:grid;grid-template-columns:1fr;gap:34px 44px}
+@media(min-width:700px){.steps{grid-template-columns:repeat(3,1fr)}}
+.step .n{font-family:var(--mono);font-size:40px;font-weight:700;color:var(--app);line-height:1;margin-bottom:12px}
+.step h4{font-size:16px;font-weight:800;letter-spacing:-.02em;margin-bottom:6px}
+.step p{font-size:13.5px;line-height:1.5;color:#3a3a3a}
+
+/* ---------- BLOC FINAL — un aplat, pas un rectangle bordé ---------- */
+.slab{background:var(--app);padding:70px 32px;text-align:center;position:relative;overflow:hidden}
+.slab .sq1{position:absolute;top:-40px;left:-30px;width:120px;height:120px;background:var(--ink);
+  animation:spin 20s linear infinite}
+.slab .tri2{position:absolute;bottom:-30px;right:-10px;width:0;height:0;border-left:58px solid transparent;
+  border-right:58px solid transparent;border-bottom:96px solid var(--paper);opacity:.35;
+  animation:bob 8s ease-in-out infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.slab h2,.slab .lead,.slab .cta{position:relative;z-index:2}
+.slab .lead{margin:14px auto 30px;color:var(--ink);text-align:center;opacity:.85}
+.slab .cta{justify-content:center}
+.slab .lnk{border-color:var(--ink)}
+.slab .lnk:hover{color:var(--paper);border-color:var(--paper)}
+
+/* ---------- FOOTER — aplat encre ---------- */
+footer{background:var(--ink);color:var(--paper);padding:66px 0 56px}
+.foot-in{display:flex;justify-content:space-between;align-items:flex-end;gap:28px;flex-wrap:wrap}
+footer h2{font-size:clamp(28px,3.6vw,42px)}
+footer .mail{display:inline-block;margin-top:12px;color:var(--app);font-family:var(--mono);font-size:14px;
+  border-bottom:2px solid transparent;transition:border-color .22s}
+footer .mail:hover{border-color:var(--app)}
+.foot-r{text-align:right;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:#8f8f8f;line-height:1.9}
+.foot-r a{transition:color .2s}.foot-r a:hover{color:var(--app)}
+
+/* ---------- RÉVÉLATION ----------
+   Amélioration progressive : l'état masqué n'existe que si JS est actif. */
+.js .rv{clip-path:inset(0 0 100% 0);transform:translateY(18px);
+  transition:clip-path .7s var(--ease),transform .7s var(--ease)}
+.js .rv.in{clip-path:inset(0 0 0 0);transform:none}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  /* La bille reste au repos et la durée par défaut s'affiche : l'état de base
+     du module EST son état lisible, il n'y a rien à neutraliser de plus.
+     Le JS n'arme pas la démo automatique. */
+  .js .rv{clip-path:none;transform:none}
+}
+</style>
+</head>
+<body>
+
+  <nav>
+    <div class="wrap nav-in">
+      <a class="logo" href="#top" aria-label="STUPIDS STUDIO">
+        <span class="sq">1a</span><span class="ci"></span><span class="tr"></span><span class="rc"></span>
+        <span class="name">PullTheTimer <small>Pro Plus 3000</small></span>
+      </a>
+      <div class="nav-links">
+        <a href="#app">L'app</a>
+        <a href="#features">Fonctionnalités</a>
+        <a href="#how">Comment ça marche</a>
+        <a href="https://github.com/sandrophoto/pullthetimer-pro-plus-3000" target="_blank">GitHub</a>
+        <a class="btn" href="https://github.com/sandrophoto/pullthetimer-pro-plus-3000/releases/latest" target="_blank">Télécharger <span class="ar">↓</span></a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="hero" id="top">
+    <div class="hero-l">
+      <p class="eyebrow">MACOS · BARRE DE MENU · GRATUIT</p>
+      <h1>Tire. Lâche.<br>Le temps file.</h1>
+      <p class="sub">Un minuteur qui vit dans ta barre de menu et se règle d'un seul geste : clique sur la bille, tire vers le bas, une ligne s'étire avec la durée. Relâche — c'est parti.</p>
+      <div class="cta">
+        <a class="btn" href="https://github.com/sandrophoto/pullthetimer-pro-plus-3000/releases/latest" target="_blank">Télécharger pour macOS <span class="ar">↓</span></a>
+        <a class="lnk" href="https://github.com/sandrophoto/pullthetimer-pro-plus-3000" target="_blank">Voir sur GitHub</a>
+      </div>
+      <p class="ver">macOS 13+ · Apple Silicon &amp; Intel · mises à jour auto · signé</p>
+    </div>
+
+    <div class="hero-r" id="panel">
+      <div class="circle par" data-d="14"></div>
+      <div class="tri par" data-d="-10"></div>
+
+      <!-- effet signature : attrape la bille et tire-la vers le bas -->
+      <div class="pull" id="pull" aria-hidden="true">
+        <div class="mbar">
+          <span class="mi app">PullTheTimer</span>
+          <span class="anch"></span>
+          <span class="mi clk">14:32</span>
+        </div>
+        <div class="stage" id="stage">
+          <div class="thread"></div>
+          <div class="ball" id="ball"><span class="f"></span></div>
+          <p class="stt" id="stt">Prêt</p>
+          <p class="dur" id="dur">05:00</p>
+          <p class="hint" id="hint">Tire la bille <i>↓</i></p>
+        </div>
+      </div>
+
+      <div class="rules">
+        <div>01 / TIRE</div>
+        <div>02 / LÂCHE</div>
+        <div>03 / OUBLIE</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ticker" aria-hidden="true">
+    <div class="track" id="track"><b>Geste · clique-tire-lâche</b><b>Paliers magnétiques</b><b>Open source</b></div>
+  </div>
+
+  <section id="app" class="wrap">
+    <div class="sec-head">
+      <p class="eyebrow rv">L'APP</p>
+      <p class="note rv">Le volet « Actions » : ce qui se passe à la fin.</p>
+    </div>
+    <h2 class="rv" style="margin-bottom:40px">Le décompte dans la barre.<br>Le reste dans Options.</h2>
+    <div class="shot rv" aria-hidden="true">
+      <!-- la barre de menu : le temps restant à gauche, la bille qui se remplit -->
+      <div class="mb">
+        <span class="tm">23m45s</span>
+        <span class="dk"><i></i></span>
+        <span class="cl">14:32</span>
+      </div>
+      <div class="body">
+        <div class="win">
+          <div class="bar"><i></i><i></i><i></i><span>OPTIONS — PULLTHETIMER PRO PLUS 3000</span></div>
+          <div class="win-b">
+            <!-- la barre latérale et ses groupes, comme dans l'app -->
+            <div class="side">
+              <div class="sr">Général</div>
+              <p class="sg">Minuteur</p>
+              <div class="sr">Apparence</div>
+              <div class="sr">Répétition</div>
+              <p class="sg">Fin du minuteur</p>
+              <div class="sr">Alarme</div>
+              <div class="sr">Notification</div>
+              <div class="sr on">Actions</div>
+              <div class="sr">Système</div>
+              <p class="sg">Application</p>
+              <div class="sr">Mise à jour</div>
+              <div class="sr">À propos</div>
+            </div>
+            <!-- le volet sélectionné : ses réglages se déplient quand on les active -->
+            <div class="pane">
+              <h4>Actions</h4>
+              <div class="opt"><span>Lancer une application</span><span class="tg on"><i></i></span></div>
+              <div class="opt ind"><span>Musique.app</span><span class="bt">Choisir…</span></div>
+              <div class="opt"><span>Ouvrir une page web</span><span class="tg on"><i></i></span></div>
+              <div class="opt ind"><span>Adresse</span><span class="fld">https://tigre.paris</span></div>
+              <div class="opt"><span>Fermer une application</span><span class="tg"><i></i></span></div>
+              <span class="test">Tester les déclencheurs maintenant</span>
+              <p class="cap">Le test exécute ces actions (sauf veille / extinction).</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" class="wrap" style="padding-top:0">
+    <div class="sec-head">
+      <p class="eyebrow rv">PENSÉ DANS LE DÉTAIL</p>
+      <p class="note rv">Chaque interaction est animée, fluide, élégante.</p>
+    </div>
+    <h2 class="rv" style="margin-bottom:44px">Petit dans la barre.<br>Grand dans l'usage.</h2>
+    <div class="tiles">
+      <div class="tile rv"><span class="ic">🫳</span><h3>Réglage par geste</h3><p>Clique-maintiens et tire : la ligne s'étire, précise au début, en heures et demi-heures plus bas. Des paliers magnétiques (5, 30, 60, 120 min) avec retour haptique.</p><div class="bar"></div></div>
+      <div class="tile rv"><span class="ic">💧</span><h3>La bille vivante</h3><p>Un disque de couleur qui se vide quand tu tires — comme si l'encre passait dans la ligne — puis se remplit au fil du temps, avec une petite vague en surface.</p><div class="bar"></div></div>
+      <div class="tile rv"><span class="ic">🪟</span><h3>Survol = aperçu</h3><p>Passe la souris sur la bille : une fenêtre éclot avec un anneau de progression animé, le temps restant, et des boutons <b>Pause</b> et <b>Stop</b>.</p><div class="bar"></div></div>
+      <div class="tile rv"><span class="ic">🔁</span><h3>Répétition</h3><p>Relance le minuteur un nombre choisi de fois… ou à l'infini. Idéal pour les intervalles, le pomodoro, le sport.</p><div class="bar"></div></div>
+      <div class="tile rv"><span class="ic">⚡️</span><h3>Déclencheurs de fin</h3><p>Notification, lancer une app, ouvrir une page web, fermer une app, mettre en veille ou éteindre le Mac. À toi de choisir.</p><div class="bar"></div></div>
+      <div class="tile rv"><span class="ic">🎨</span><h3>À ton goût</h3><p>Icône en couleur ou noir &amp; blanc, format du temps, ouverture au démarrage, icône dans le Dock, mises à jour automatiques.</p><div class="bar"></div></div>
+    </div>
+  </section>
+
+  <section id="how" class="wrap" style="padding-top:0">
+    <div class="sec-head">
+      <p class="eyebrow rv">EN TROIS TEMPS</p>
+      <p class="note rv">La gestuelle fait tout le travail.</p>
+    </div>
+    <h2 class="rv" style="margin-bottom:44px">Aucun réglage<br>à apprendre.</h2>
+    <div class="steps">
+      <div class="step rv"><div class="n">01</div><h4>Tire</h4><p>Clique sur la bille dans la barre de menu et descends. La ligne s'étire et affiche la durée en direct.</p></div>
+      <div class="step rv"><div class="n">02</div><h4>Lâche</h4><p>Relâche à la bonne durée. La forme se dissout, la bille se vide d'un trait, le minuteur démarre.</p></div>
+      <div class="step rv"><div class="n">03</div><h4>Oublie</h4><p>Le temps écoulé remplit la bille. À la fin : alarme, notification et tes déclencheurs.</p></div>
+    </div>
+  </section>
+
+  <div class="slab">
+    <div class="sq1"></div>
+    <div class="tri2"></div>
+    <h2>Prêt à tirer&nbsp;?</h2>
+    <p class="lead">Gratuit, léger, open-source. Téléchargement direct, mises à jour automatiques.</p>
+    <div class="cta">
+      <a class="btn" href="https://github.com/sandrophoto/pullthetimer-pro-plus-3000/releases/latest" target="_blank">Télécharger pour macOS <span class="ar">↓</span></a>
+      <a class="lnk" href="https://github.com/sandrophoto/pullthetimer-pro-plus-3000" target="_blank">GitHub</a>
+    </div>
+  </div>
+
+  <footer>
+    <div class="wrap foot-in">
+      <div>
+        <h2>Dis bonjour.</h2>
+        <a class="mail" href="mailto:sandro@tigre.paris">sandro@tigre.paris</a>
+      </div>
+      <div class="foot-r">
+        <div><a href="https://github.com/sandrophoto/pullthetimer-pro-plus-3000" target="_blank">GITHUB</a> · <a href="https://tigre.paris" target="_blank">SITE</a></div>
+        <div>© 2026 STUPIDS STUDIO — PULLTHETIMER PRO PLUS 3000</div>
+        <div>PETITS LOGICIELS, GROSSES OPINIONS</div>
+      </div>
+    </div>
+  </footer>
+
+<script>
+/* Ticker : dupliqué pour une boucle sans couture */
+const words=["Geste · clique-tire-lâche","Paliers magnétiques","Répétition · à l'infini",
+             "Mises à jour · Sparkle","Open source","Apple Silicon & Intel","Barre de menu"];
+document.getElementById('track').innerHTML=words.map(w=>`<b>${w}</b>`).join('').repeat(2);
+
+/* Révélation au scroll — volet net, en cascade.
+   Vérification directe au scroll/resize plutôt qu'IntersectionObserver :
+   une poignée d'éléments, c'est gratuit, et ça ne peut pas laisser la
+   page vide si l'observer ne se déclenche pas. */
+let rvs=[...document.querySelectorAll('.rv')];
+rvs.forEach((el,i)=>el.style.transitionDelay=(i%4*70)+'ms');
+function reveal(){
+  if(!rvs.length) return;
+  rvs=rvs.filter(el=>{
+    if(el.getBoundingClientRect().top > innerHeight-80) return true;
+    el.classList.add('in');return false;
+  });
+}
+addEventListener('scroll',reveal,{passive:true});
+addEventListener('resize',reveal);
+addEventListener('load',reveal);
+requestAnimationFrame(reveal);
+
+const reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+/* ---------- EFFET SIGNATURE : la bille qu'on tire ----------
+   Le geste de l'app, pour de vrai : pointerdown sur la bille, on tire,
+   la durée suit la distance (plafond 60 min), on lâche et
+   la bille remonte d'un coup avant que le décompte parte.
+   Sans personne au bout de 3 s, une démo tire la bille toute seule. */
+const pull=document.getElementById('pull'), stage=document.getElementById('stage'),
+      ball=document.getElementById('ball'), dur=document.getElementById('dur'),
+      stt=document.getElementById('stt'), hint=document.getElementById('hint');
+const MAXMIN=60, DEFMIN=5;
+let maxY=0, y=0, grabOff=0, dragging=false, raf=0, timer=0, tick=0;
+
+function measure(){ maxY=Math.max(60,stage.clientHeight-40) }
+measure(); addEventListener('resize',measure);
+
+const pad=n=>String(n).padStart(2,'0');
+const fmt=(m,s)=>pad(m)+':'+pad(s);
+/* La course de la bille est bornée par la hauteur du module (maxY). Mapper la
+   durée sur une constante px/min rendait donc le plafond de 60 min inatteignable,
+   et pire, variable : ~57 min sur un module de 380px, ~38 min sur les 270px du
+   mobile. On mappe la course COMPLÈTE sur [1, MAXMIN] : une traction à fond vaut
+   60 min partout. (Sur desktop ça tombe à ~5,7 px/min, soit le geste d'origine.) */
+const minsFor=v=>Math.min(MAXMIN,Math.max(1,Math.round(v/maxY*MAXMIN)));
+
+function setY(v){
+  y=Math.max(0,Math.min(maxY,v));
+  pull.style.setProperty('--y',y.toFixed(1)+'px');
+  if(y>0){                       /* on garde la durée choisie pendant le retour */
+    const m=minsFor(y);
+    dur.textContent=fmt(m,0);
+    /* la bille se vide : l'encre part dans le fil */
+    ball.style.setProperty('--f',(100-(m/MAXMIN)*84).toFixed(0)+'%');
+  }
+}
+
+/* petit tween maison : net, sans élastique */
+function tween(from,to,d,done){
+  cancelAnimationFrame(raf);
+  const t0=performance.now();
+  (function step(now){
+    const p=Math.min(1,(now-t0)/d), e=1-Math.pow(1-p,3);
+    setY(from+(to-from)*e);
+    if(p<1) raf=requestAnimationFrame(step); else if(done) done();
+  })(performance.now());
+}
+
+function idle(){
+  pull.classList.remove('run');
+  stt.textContent='Prêt';
+  dur.textContent=fmt(DEFMIN,0);
+  ball.style.setProperty('--f','100%');
+  clearTimeout(timer);
+  if(!reduce) timer=setTimeout(demo,3000);
+}
+
+/* le décompte : une ou deux secondes, juste pour montrer que ça tourne */
+function countdown(m){
+  pull.classList.add('run');
+  stt.textContent='En cours';
+  let left=m*60, n=0;
+  clearInterval(tick);
+  tick=setInterval(()=>{
+    left--; n++;
+    dur.textContent=fmt(Math.floor(left/60),left%60);
+    ball.style.setProperty('--f',(16+n*5)+'%');
+    if(n>=3){ clearInterval(tick); idle() }
+  },700);
+}
+
+function release(){
+  const m=y>0?minsFor(y):DEFMIN;
+  tween(y,0,170,()=>countdown(m));
+}
+
+function demo(){
+  if(dragging||reduce) return;
+  stt.textContent='Réglage';
+  const target=Math.min(maxY,70+Math.random()*(maxY-90));
+  tween(0,target,900,()=>{ timer=setTimeout(()=>{ if(!dragging) release() },500) });
+}
+
+function stopAll(){ clearTimeout(timer); clearInterval(tick); cancelAnimationFrame(raf) }
+
+ball.addEventListener('pointerdown',e=>{
+  e.preventDefault();
+  stopAll();
+  dragging=true;
+  pull.classList.add('grab');
+  pull.classList.remove('run');
+  hint.classList.add('gone');   /* l'invite ne sert plus : on a compris */
+  stt.textContent='Réglage';
+  grabOff=e.clientY-y;
+  ball.setPointerCapture(e.pointerId);
+});
+ball.addEventListener('pointermove',e=>{ if(dragging) setY(e.clientY-grabOff) });
+function up(){ if(!dragging) return; dragging=false; pull.classList.remove('grab'); release() }
+ball.addEventListener('pointerup',up);
+ball.addEventListener('pointercancel',up);
+
+idle();
+
+/* Parallaxe : les formes suivent le pointeur, chacune à sa profondeur.
+   Le module, lui, ne bouge pas : il est attrapable, il doit rester stable. */
+const panel=document.getElementById('panel');
+if(!reduce){
+  panel.addEventListener('pointermove',e=>{
+    const r=panel.getBoundingClientRect();
+    const x=(e.clientX-r.left)/r.width-.5, y2=(e.clientY-r.top)/r.height-.5;
+    panel.querySelectorAll('.par').forEach(el=>{
+      const d=+el.dataset.d;
+      el.style.translate=`${x*d}px ${y2*d}px`;
+    });
+  });
+  panel.addEventListener('pointerleave',()=>{
+    panel.querySelectorAll('.par').forEach(el=>el.style.translate='0px 0px');
+  });
+}
+</script>
+</body>
+</html>

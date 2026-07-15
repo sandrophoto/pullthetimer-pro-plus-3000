@@ -67,6 +67,18 @@ nav .btn{padding:11px 16px}
   transition:color .2s,border-color .2s}
 .lnk:hover{color:var(--app);border-color:var(--app)}
 
+/* ---------- Téléchargement en pause ----------
+   Les binaires restent dans les Releases et les apps installées continuent
+   de se mettre à jour : seule la mise à disposition publique est suspendue. */
+.soon{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;
+  text-transform:uppercase;letter-spacing:.1em;padding:14px 22px;background:var(--yellow);color:var(--ink)}
+.soon::before{content:"";width:8px;height:8px;background:var(--ink);flex:none;
+  animation:pulse 1.8s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.25}}
+nav .soon{padding:11px 16px;font-size:11px}
+.slab .soon{background:var(--ink);color:var(--paper)}
+.slab .soon::before{background:var(--paper)}
+
 /* ---------- HERO ---------- */
 .hero{display:grid;grid-template-columns:1fr}
 @media(min-width:900px){.hero{grid-template-columns:1.1fr .9fr}}
@@ -267,7 +279,7 @@ footer .mail:hover{border-color:var(--app)}
         <a href="#features">Fonctionnalités</a>
         <a href="#how">Comment ça marche</a>
         <a href="https://github.com/sandrophoto/pullthetimer-pro-plus-3000" target="_blank">GitHub</a>
-        <a class="btn" href="https://github.com/sandrophoto/pullthetimer-pro-plus-3000/releases/latest" target="_blank">Télécharger <span class="ar">↓</span></a>
+        <span class="soon">Téléchargement en pause</span>
       </div>
     </div>
   </nav>
@@ -278,7 +290,7 @@ footer .mail:hover{border-color:var(--app)}
       <h1>Tire. Lâche.<br>Le temps file.</h1>
       <p class="sub">Un minuteur qui vit dans ta barre de menu et se règle d'un seul geste : clique sur la bille, tire vers le bas, une ligne s'étire avec la durée. Relâche — c'est parti.</p>
       <div class="cta">
-        <a class="btn" href="https://github.com/sandrophoto/pullthetimer-pro-plus-3000/releases/latest" target="_blank">Télécharger pour macOS <span class="ar">↓</span></a>
+        <span class="soon">Téléchargement en pause</span>
         <a class="lnk" href="https://github.com/sandrophoto/pullthetimer-pro-plus-3000" target="_blank">Voir sur GitHub</a>
       </div>
       <p class="ver">macOS 13+ · Apple Silicon &amp; Intel · mises à jour auto · signé</p>
@@ -398,9 +410,9 @@ footer .mail:hover{border-color:var(--app)}
     <div class="sq1"></div>
     <div class="tri2"></div>
     <h2>Prêt à tirer&nbsp;?</h2>
-    <p class="lead">Gratuit, léger, open-source. Téléchargement direct, mises à jour automatiques.</p>
+    <p class="lead">Le téléchargement est en pause, le temps qu'on remette tout d'équerre. Les apps déjà installées continuent de se mettre à jour.</p>
     <div class="cta">
-      <a class="btn" href="https://github.com/sandrophoto/pullthetimer-pro-plus-3000/releases/latest" target="_blank">Télécharger pour macOS <span class="ar">↓</span></a>
+      <span class="soon">Téléchargement en pause</span>
       <a class="lnk" href="https://github.com/sandrophoto/pullthetimer-pro-plus-3000" target="_blank">GitHub</a>
     </div>
   </div>
